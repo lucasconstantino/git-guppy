@@ -2,24 +2,11 @@
 
 > Simple git-hook integration for your gulp workflows.
 
-guppy streamlines and extends your git-hooks by integrating them with your 
-[gulp](http://gulpjs.com) workflow. This enables you to have **gulp tasks that 
-run when triggered by a git-hook**, which means you can do cool things like 
-abort a commit if your tests are failing. Git-hooks can now be managed through 
-[npm](https://npmjs.org), allowing them to automatically be installed and 
-updated. And because they integrate with gulp, it's easy to modify the workflow 
-and even combine hooks with your other gulp tasks.
-
-guppy leverages these powerful existing systems as its backbone, allowing guppy
-(and therefore your git-hooks) to remain as simple and lightweight as possible
-through interfaces you're already familiar with.
-
-A git-hook that lint-checks your code and makes sure your unit tests pass before 
-committing could be as simple as
-
-```js
-gulp.task('pre-commit', ['lint', 'unit']);
-```
+guppy streamlines and extends your git-hooks by integrating them with your
+[gulp](http://gulpjs.com) workflow. This enables you to have **gulp tasks that
+run when triggered by a git-hook**, which means you can do cool things like
+abort a commit if your tests are failing - using the same gulp tasks you already
+have.
 
 ## Install
 
@@ -29,66 +16,73 @@ npm i git-guppy --save-dev
 
 ## Usage
 
-### Git integration
+### 1. Declaring hooks as gulp tasks
 
-*Automatic!* 
+The first step is the most common to gulp users: you should define a new gulp
+task which name matches whichever git-hook you want to be triggerable by git. For
+instance, to define a *pre-commit* hook that runs your unit tests and then some
+custom code you could do as follows:
 
-The actual scripts that git will run to trigger guppy's hooks will be automatically
-installed to your `.git/hooks/` directory. These are just a wrapper for invoking 
-the gulp tasks that guppy registers.
+```js
+var gulp = require('gulp');
 
-Typically, a workflow can be added to your gulp tasks via a *guppy-hook*. A 
-guppy-hook is like a git-hook preconfigured for specific gulp workflows.
+gulp.task('pre-commit', ['unit'], function () {
+  // your pre-commit task's code.
+});
+```
 
-You can install *guppy-hooks* via `npm` just like any other package. For every valid
-git-hook name, there exists a "guppy-[hookname]" package that automatically installs
-the related hook to your `.git/hooks` dir, e.g. "guppy-pre-commit" or "guppy-post-update".
-Just add the guppy-hook you need as a dev-dependency in your project.
+### 2. Installing git-hooks
 
-Search ["guppy-hook" on npm](https://www.npmjs.com/search?q=guppy-hook) to find all 
-guppy-hook packages. Or run `npm search guppy-hook` from the commandline.
+To define that your project implements a git-hook you can simply add the hook's
+name to the introduced *package.json*'s property *guppy-hooks*, which should
+always be an array such as follows:
+
+```json
+{
+  "guppy-hooks": [
+    "pre-commit",
+    "post-commit"
+  ]
+}
+```
+
+After that, you can install *git-guppy* as a dependency of your project
+(`npm install git-guppy --save-dev`) and have it's *postinstall* script automatically create the proper hook files inside *.git/hooks* directory.
+
+> If you already had *git-guppy* installed as a dependency of your project
+before this step, make sure to remove the package from the node_modules
+directory and running `npm install` once again so to force NPM to run
+*git-guppy*'s postinstall script, whcih is responsible for creating the hook
+files mentioned above.
+
+
+## Advanced usage
 
 ### gulp integration
 
-> :warning: **Stop!** If you are using a guppy-hook package, refer to the 
-documentation for that package. You do not need the steps below unless you are 
-adding custom guppy integration to your gulpfile or authoring your own guppy-hook
-package.
+guppy exposes a few simple methods to help you superpower your git-hooks with
+gulp tasks. This is useful when you need to access some meta information from
+a git process - such as files being commited, or the commiting message.
 
-guppy exposes a few simple methods to help you superpower your git-hooks with 
-gulp tasks.
-
-Before you dive in, initialize guppy by passing in your gulp reference:
+To access these methods, you need to initialize guppy by passing in your gulp
+reference as follows:
 
 ```js
 var gulp = require('gulp');
 var guppy = require('git-guppy')(gulp);
 ```
 
-Then simply define some gulp tasks in your `gulpfile.js` whose names match 
-whichever git-hooks you want to be triggerable by git.
-
-```js
-gulp.task('pre-commit', function () {
-  // see below
-});
-```
-
-*Note: if you are working directly with guppy rather than installing a guppy-hook
-you will need to manually install the associated git-hooks using the 
-[guppy-cli](https://github.com/therealklanni/guppy-cli) commandline tool.*
-
 #### guppy.src(*hookName*)
 
 > Supported hooks: `applypatch-msg`, `commit-msg`, `pre-applypatch`, `pre-commit`,
 `prepare-commit-msg`
 
-Pass in the name of the desired git-hook and get back the related filenames. 
-This allows you to work with the source file directly, for example to modify a 
-commit-msg programmatically or lint changed files. 
+Pass in the name of the desired git-hook and get back the related filenames.
+This allows you to work with the source file directly, for example to modify a
+commit-msg programmatically or lint changed files.
 
-*Note for pre-commit and pre-applypatch this will give you the ***working-copy***, 
-not the indexed (staged) changes. If you want the indexed changes, use 
+*Note for pre-commit and pre-applypatch this will give you the ***working-copy***,
+not the indexed (staged) changes. If you want the indexed changes, use
 `guppy.stream()` instead.*
 
 ```js
@@ -107,9 +101,9 @@ gulp.task('pre-commit', function () {
 > Supported hooks: all
 
 If you pass the optional `fn` argument, it will be passed to `gulp.task()` as the
-task callback, but the first argument will be the related filenames (or `null`, 
-if none) and a second optional argument may also be supplied (when applicable) 
-with any additional arguments received from the git-hook as an array. gulp will 
+task callback, but the first argument will be the related filenames (or `null`,
+if none) and a second optional argument may also be supplied (when applicable)
+with any additional arguments received from the git-hook as an array. gulp will
 provide its callback as the last argument.
 
 ```js
@@ -136,14 +130,14 @@ gulp.task('pre-push', guppy.src('pre-push', function (files, extra, cb) {
 
 #### guppy.stream(*hookName*)
 
-> Supported hooks: `applypatch-msg`, `commit-msg`, `pre-applypatch`, `pre-commit`, 
+> Supported hooks: `applypatch-msg`, `commit-msg`, `pre-applypatch`, `pre-commit`,
 `prepare-commit-msg`
 
 Pass in the name of the git-hook to produce a stream of the related files.
 
 *Note that depending on the git-hook, you may be acting on files that differ from
-your working copy, such as those staged for commit (as with 'pre-commit' for 
-example), rather than the working copy. If you need to act on the working-copy 
+your working copy, such as those staged for commit (as with 'pre-commit' for
+example), rather than the working copy. If you need to act on the working-copy
 files, use `guppy.src()` instead.*
 
 ```js
@@ -156,22 +150,9 @@ gulp.task('pre-commit', function () {
 });
 ```
 
-#### Additional notes
+### Additional notes
 
-For many git-hooks there are no files associated, so for those it makes sense 
-to only add other gulp tasks as dependencies to invoke a workflow, however some 
-will still receive some arguments (passed in by `guppy.src()` when used as a 
-callback) for more advanced use cases.
-
-```js
-gulp.task('post-checkout', ['lint']);
-```
-
-## Writing guppy-hooks
-
-*stay tuned*
-
-For details on what arguments each git-hook receives and what result a non-zero 
+For details on what arguments each git-hook receives and what result a non-zero
 exit status would have, check the [git-scm docs](https://git-scm.com/docs/githooks).
 
 ## Author
